@@ -10,6 +10,7 @@ import * as dynamoose from "dynamoose";
 import type { Item } from "dynamoose/dist/Item";
 import type { Scan } from "dynamoose/dist/ItemRetriever";
 import fastify from "fastify";
+import type { FastifyInstance } from "fastify/types/instance";
 import { z } from "zod";
 
 function createContext({ req, res }: CreateFastifyContextOptions) {
@@ -56,23 +57,6 @@ const Pair = {
 const appRouter = trpc
   .router<Context>()
   .query("usersPairs", {
-    // resolve: async () => {
-    //   try {
-    //     const response = await pify(
-    //       Pair.scan("email").contains("sotnikovkirills@gmail.com").exec
-    //     )();
-
-    //     console.log(response);
-
-    //     return {
-    //       text: "Hello form Backend",
-    //       response,
-    //     };
-    //   } catch (error) {
-    //     console.error(error);
-    //   }
-    //   return { myError: true };
-    // },
     input: z
       .object({
         email: z.string(),
@@ -81,7 +65,6 @@ const appRouter = trpc
 
     resolve: ({ input }) =>
       new Promise((resolve, reject) => {
-        // let response: object;
         Pair.scan("email")
           .contains(input?.email)
           .exec((error, result) => {
@@ -91,41 +74,15 @@ const appRouter = trpc
               reject(error);
             } else {
               console.log(result);
-              // response = result.toJSON();
 
               resolve({
                 text: "Hello form Backend",
                 result,
               });
-
-              // console.log(response);
             }
           });
       }),
   })
-  // .query("usersPairs", {
-  //   input: z
-  //     .object({
-  //       email: z.string(),
-  //     })
-  //     .nullish(),
-  //   resolve: async ({ input }) => {
-  //     const res = await Pair.scan("email")
-  //       .contains(input.email)
-  //       .exec((error, result) => {
-  //         if (error) {
-  //           console.error(error);
-
-  //           return error;
-  //         } else {
-  //           console.log(result, input.email);
-
-  //           return result;
-  //         }
-  //       });
-  //     return { total: res };
-  //   },
-  // })
   .mutation("createPair", {
     input: z.object({
       id: z.string(),
@@ -134,7 +91,6 @@ const appRouter = trpc
       translation: z.string(),
     }),
     resolve({ input }) {
-      // imagine db call here
       const pair = Pair.of({
         id: input.id,
         email: input.email,
@@ -170,7 +126,7 @@ const schema = {
   },
 };
 
-const server = fastify({
+const server: FastifyInstance = fastify({
   maxParamLength: 5000,
 });
 
@@ -197,7 +153,7 @@ server.register(
 
 (async () => {
   try {
-    await server.listen(8002);
+    await server.listen({ port: 8002 });
   } catch (err) {
     server.log.error(err);
     process.exit(1);
