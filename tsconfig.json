@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@tsconfig/node16-strictest-esm/tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS"
+  }
+  // "compilerOptions": {
+  //   "target": "ESNext",
+  //   "module": "Node16",
+  //   "moduleResolution": "NodeNext",
+  //   "outDir": "dist",
+  //   "skipLibCheck": true,
+  //   "esModuleInterop": true
+  //   // "typeRoots": ["./node_modules/@types"]
+  //   // "module": "Node16",
+  //   //   "moduleResolution": "Node"
+  //   // "module": "CommonJS"
+  // },
+  // "ts-node": {
+  //   "esm": true,
+  //   "experimentalSpecifierResolution": "node"
+  //   // "experimentalResolver": true
+  // }
+}

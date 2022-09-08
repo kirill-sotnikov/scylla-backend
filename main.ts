@@ -1,21 +1,22 @@
 import cors from "@fastify/cors";
+import type { inferAsyncReturnType } from "@trpc/server";
 import * as trpc from "@trpc/server";
-import { inferAsyncReturnType } from "@trpc/server";
+import {} from "@trpc/server";
 import {
   CreateFastifyContextOptions,
   fastifyTRPCPlugin,
 } from "@trpc/server/adapters/fastify";
 import * as dynamoose from "dynamoose";
-import { Item } from "dynamoose/dist/Item";
-import { Scan, ScanResponse } from "dynamoose/dist/ItemRetriever";
+import type { Item } from "dynamoose/dist/Item";
+import type { Scan } from "dynamoose/dist/ItemRetriever";
 import fastify from "fastify";
 import { z } from "zod";
 
-export function createContext({ req, res }: CreateFastifyContextOptions) {
-  const user = { name: req.headers.username ?? "anonymous" };
+function createContext({ req, res }: CreateFastifyContextOptions) {
+  const user = { name: req.headers["username"] ?? "anonymous" };
   return { req, res, user };
 }
-export type Context = inferAsyncReturnType<typeof createContext>;
+type Context = inferAsyncReturnType<typeof createContext>;
 
 const ddb = new dynamoose.aws.ddb.DynamoDB({
   region: "None",
@@ -28,14 +29,14 @@ const ddb = new dynamoose.aws.ddb.DynamoDB({
 
 dynamoose.aws.ddb.set(ddb);
 
-export interface PairProps {
+interface PairProps {
   id: string;
   email: string;
   phrase: string;
   translation: string;
 }
 
-export interface PairItem extends PairProps, Item {}
+interface PairItem extends PairProps, Item {}
 
 const PairModel = dynamoose.model<PairItem>("Pairs", {
   id: String,
@@ -47,42 +48,84 @@ const PairModel = dynamoose.model<PairItem>("Pairs", {
 /**
  * @see https://stackoverflow.com/a/62094512
  */
-export const Pair = {
+const Pair = {
   of: (props: PairProps) => new PairModel(props),
   scan: (key: keyof PairProps): Scan<PairItem> => PairModel.scan(key),
 };
 
-export const appRouter = trpc
+const appRouter = trpc
   .router<Context>()
-  .query("hello", {
-    resolve: () => {
-      return "Hello form Backend";
-    },
-  })
   .query("usersPairs", {
+    // resolve: async () => {
+    //   try {
+    //     const response = await pify(
+    //       Pair.scan("email").contains("sotnikovkirills@gmail.com").exec
+    //     )();
+
+    //     console.log(response);
+
+    //     return {
+    //       text: "Hello form Backend",
+    //       response,
+    //     };
+    //   } catch (error) {
+    //     console.error(error);
+    //   }
+    //   return { myError: true };
+    // },
     input: z
       .object({
         email: z.string(),
       })
       .nullish(),
-    resolve: ({ input }) => {
-      let response: ScanResponse<PairItem> | boolean | string = false;
 
-      Pair.scan("email")
-        .contains(input.email)
-        .exec((error, result) => {
-          if (error) {
-            response = error;
-          } else {
-            response = result;
-          }
-        });
-      return {
-        text: `Get ${input?.email} pairs`,
-        pairs: response,
-      };
-    },
+    resolve: ({ input }) =>
+      new Promise((resolve, reject) => {
+        // let response: object;
+        Pair.scan("email")
+          .contains(input?.email)
+          .exec((error, result) => {
+            if (error) {
+              console.error(error);
+
+              reject(error);
+            } else {
+              console.log(result);
+              // response = result.toJSON();
+
+              resolve({
+                text: "Hello form Backend",
+                result,
+              });
+
+              // console.log(response);
+            }
+          });
+      }),
   })
+  // .query("usersPairs", {
+  //   input: z
+  //     .object({
+  //       email: z.string(),
+  //     })
+  //     .nullish(),
+  //   resolve: async ({ input }) => {
+  //     const res = await Pair.scan("email")
+  //       .contains(input.email)
+  //       .exec((error, result) => {
+  //         if (error) {
+  //           console.error(error);
+
+  //           return error;
+  //         } else {
+  //           console.log(result, input.email);
+
+  //           return result;
+  //         }
+  //       });
+  //     return { total: res };
+  //   },
+  // })
   .mutation("createPair", {
     input: z.object({
       id: z.string(),
@@ -106,7 +149,7 @@ export const appRouter = trpc
       });
 
       return {
-        id: `${Math.random()}`,
+        // id: `${Math.random()}`,
         ...input,
       };
     },
@@ -135,14 +178,14 @@ server.register(cors, {
   origin: "http://localhost:3000",
   credentials: true,
   allowedHeaders: "authorization,content-type", // можно удалть
-  methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 });
 
 server.register(
   (instance, options, done) => {
     fastifyTRPCPlugin(instance, options, done);
 
-    instance.get("/", schema, async function (req, reply) {
+    instance.get("/", schema, async function () {
       return { hello: "world" };
     });
   },
@@ -160,3 +203,5 @@ server.register(
     process.exit(1);
   }
 })();
+
+export {};
